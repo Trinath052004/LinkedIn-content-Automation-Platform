@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 LinkedIn Command Center</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0a0a0f;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-bottom: 1px solid #2a2a4a;
+            padding: 20px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            background: linear-gradient(90deg, #00d2ff, #7b2ff7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header .status-badge {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-idle { background: #1a1a2e; border: 1px solid #333; color: #888; }
+        .status-running { background: #1a2e1a; border: 1px solid #2d5a2d; color: #4ade80; animation: pulse 2s infinite; }
+        .status-done { background: #1a1a2e; border: 1px solid #7b2ff7; color: #a78bfa; }
+        .status-error { background: #2e1a1a; border: 1px solid #5a2d2d; color: #f87171; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 30px;
+        }
+
+        /* ---- LEFT: Input Panel ---- */
+        .input-panel {
+            background: #12121a;
+            border: 1px solid #2a2a4a;
+            border-radius: 16px;
+            padding: 28px;
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+
+        .input-panel h2 {
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            color: #ccc;
+        }
+
+        label {
+            display: block;
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px 14px;
+            background: #1a1a28;
+            border: 1px solid #2a2a4a;
+            border-radius: 10px;
+            color: #e0e0e0;
+            font-size: 0.95rem;
+            margin-bottom: 16px;
+            outline: none;
+            transition: border 0.2s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: #7b2ff7;
+        }
+
+        .checkbox-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #1a1a28;
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid #2a2a4a;
+            cursor: pointer;
+            text-transform: none;
+            font-size: 0.9rem;
+            color: #ccc;
+        }
+
+        .checkbox-group label:has(input:checked) {
+            border-color: #7b2ff7;
+            background: #1f1a2e;
+            color: #a78bfa;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .toggle-row label { margin: 0; }
+
+        button.launch {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #7b2ff7, #00d2ff);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+
+        button.launch:hover { opacity: 0.9; transform: translateY(-1px); }
+        button.launch:active { transform: translateY(0); }
+        button.launch:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+        /* ---- RIGHT: Agent Activity ---- */
+        .activity-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Agent Pipeline Cards */
+        .pipeline {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .agent-card {
+            background: #12121a;
+            border: 1px solid #2a2a4a;
+            border-radius: 12px;
+            padding: 18px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .agent-card.active {
+            border-color: #00d2ff;
+            box-shadow: 0 0 20px rgba(0, 210, 255, 0.1);
+        }
+
+        .agent-card.done {
+            border-color: #4ade80;
+        }
+
+        .agent-card.error {
+            border-color: #f87171;
+        }
+
+        .agent-icon {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+
+        .agent-card h3 {
+            font-size: 0.85rem;
+            color: #aaa;
+            margin-bottom: 4px;
+        }
+
+        .agent-card .agent-status {
+            font-size: 0.75rem;
+            color: #666;
+        }
+
+        .agent-card.active .agent-status { color: #00d2ff; }
+        .agent-card.done .agent-status { color: #4ade80; }
+        .agent-card.error .agent-status { color: #f87171; }
+
+        /* Live Feed */
+        .feed {
+            background: #12121a;
+            border: 1px solid #2a2a4a;
+            border-radius: 12px;
+            padding: 20px;
+            min-height: 300px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .feed h2 {
+            font-size: 1rem;
+            color: #888;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .feed-item {
+            padding: 10px 14px;
+            border-left: 3px solid #2a2a4a;
+            margin-bottom: 8px;
+            border-radius: 0 8px 8px 0;
+            background: #1a1a28;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .feed-item.trend { border-left-color: #f59e0b; }
+        .feed-item.writer { border-left-color: #3b82f6; }
+        .feed-item.publisher { border-left-color: #4ade80; }
+        .feed-item.error { border-left-color: #f87171; background: #1f1215; }
+
+        .feed-item .time {
+            font-size: 0.7rem;
+            color: #555;
+            margin-bottom: 2px;
+        }
+
+        .feed-item .msg {
+            font-size: 0.9rem;
+            color: #ccc;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* Content Preview */
+        .content-preview {
+            background: #12121a;
+            border: 1px solid #2a2a4a;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .content-preview h2 {
+            font-size: 1rem;
+            color: #888;
+            margin-bottom: 16px;
+        }
+
+        .content-card {
+            background: #1a1a28;
+            border: 1px solid #2a2a4a;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .content-card .platform-tag {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .tag-linkedin { background: #0a66c2; color: white; }
+
+        .content-card .text {
+            font-size: 0.9rem;
+            color: #bbb;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        .content-card .hashtags {
+            margin-top: 8px;
+            color: #7b2ff7;
+            font-size: 0.85rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #444;
+        }
+
+        .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+        @media (max-width: 768px) {
+            .container { grid-template-columns: 1fr; }
+            .pipeline { grid-template-columns: repeat(2, 1fr); }
+            .input-panel { position: static; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎯 LinkedIn Command Center</h1>
+        <span id="globalStatus" class="status-badge status-idle">IDLE</span>
+    </div>
+
+    <div class="container">
+        <!-- LEFT: Input -->
+        <div class="input-panel">
+            <h2>New Campaign</h2>
+
+            <label>Topic / Subject</label>
+            <textarea id="topic" rows="2" placeholder="e.g. AI agents are replacing SaaS tools">AI agents are replacing SaaS tools</textarea>
+
+            <label>Platform</label>
+            <div class="checkbox-group">
+                <label><input type="checkbox" value="linkedin" checked disabled> LinkedIn</label>
+            </div>
+
+            <label>Tone</label>
+            <select id="tone">
+                <option value="professional">Professional</option>
+                <option value="casual">Casual & Conversational</option>
+                <option value="provocative">Bold & Provocative</option>
+                <option value="educational">Educational</option>
+                <option value="humorous">Humorous</option>
+            </select>
+
+            <label>Target Audience</label>
+            <input id="audience" type="text" value="tech founders & product managers" placeholder="e.g. tech professionals">
+
+            <div class="toggle-row">
+                <label>📤 Auto-Publish</label>
+                <input type="checkbox" id="autoPublish" style="width:auto">
+            </div>
+
+            <button class="launch" id="launchBtn" onclick="launchCampaign()">
+                🚀 Launch Campaign
+            </button>
+        </div>
+
+        <!-- RIGHT: Activity -->
+        <div class="activity-panel">
+            <!-- Agent Pipeline -->
+            <div class="pipeline">
+                <div class="agent-card" id="card-trend">
+                    <div class="agent-icon">🔍</div>
+                    <h3>Trend Agent</h3>
+                    <div class="agent-status">Waiting...</div>
+                </div>
+                <div class="agent-card" id="card-writer">
+                    <div class="agent-icon">✍️</div>
+                    <h3>Writer Agent</h3>
+                    <div class="agent-status">Waiting...</div>
+                </div>
+                <div class="agent-card" id="card-publisher">
+                    <div class="agent-icon">📤</div>
+                    <h3>Publisher Agent</h3>
+                    <div class="agent-status">Waiting...</div>
+                </div>
+            </div>
+
+            <!-- Live Feed -->
+            <div class="feed" id="feed">
+                <h2>📡 Live Agent Feed</h2>
+                <div class="empty-state" id="emptyState">
+                    <div class="icon">🛸</div>
+                    <p>Launch a campaign to see agents work in real-time</p>
+                </div>
+            </div>
+
+            <!-- Content Preview -->
+            <div class="content-preview" id="contentPreview" style="display:none">
+                <h2>📝 Generated Content</h2>
+                <div id="contentCards"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let campaignId = null;
+
+        const AGENT_MAP = {
+            'trend_agent': { card: 'card-trend', feedClass: 'trend' },
+            'writer_agent': { card: 'card-writer', feedClass: 'writer' },
+            'publisher_agent': { card: 'card-publisher', feedClass: 'publisher' },
+        };
+
+        async function launchCampaign() {
+            const btn = document.getElementById('launchBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Launching...';
+
+            // Reset UI
+            resetUI();
+
+            const topic = document.getElementById('topic').value;
+            const tone = document.getElementById('tone').value;
+            const audience = document.getElementById('audience').value;
+            const autoPublish = document.getElementById('autoPublish').checked;
+
+            const platforms = Array.from(
+                document.querySelectorAll('.checkbox-group input:checked')
+            ).map(cb => cb.value);
+
+            // Set global status
+            setGlobalStatus('running');
+
+            try {
+                const resp = await fetch('/campaigns', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        topic,
+                        platforms,
+                        tone,
+                        target_audience: audience,
+                        auto_publish: autoPublish,
+                    }),
+                });
+
+                const data = await resp.json();
+                campaignId = data.campaign_id;
+
+                // Connect WebSocket
+                connectWebSocket(campaignId);
+
+                btn.textContent = '🔴 Live — Watching Agents...';
+
+            } catch (err) {
+                addFeedItem('system', `❌ Failed to launch: ${err.message}`);
+                btn.disabled = false;
+                btn.textContent = '🚀 Launch Campaign';
+                setGlobalStatus('idle');
+            }
+        }
+
+        function connectWebSocket(id) {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}/ws/${id}`);
+
+            ws.onopen = () => {
+                addFeedItem('system', '🔗 Connected to agent pipeline');
+                // Send keepalive
+                setInterval(() => {
+                    if (ws.readyState === WebSocket.OPEN) ws.send('ping');
+                }, 10000);
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleAgentEvent(data);
+            };
+
+            ws.onclose = () => {
+                addFeedItem('system', '🔌 Connection closed');
+            };
+        }
+
+        function handleAgentEvent(event) {
+            const { agent, status, platform, message, data } = event;
+            const agentInfo = AGENT_MAP[agent];
+
+            if (!agentInfo) return;
+
+            // Update agent card
+            const card = document.getElementById(agentInfo.card);
+            const statusEl = card.querySelector('.agent-status');
+
+            card.classList.remove('active', 'done', 'error');
+
+            if (status === 'running') {
+                card.classList.add('active');
+                statusEl.textContent = platform ? `Working on ${platform}...` : 'Analyzing...';
+            } else if (status === 'completed') {
+                card.classList.add('done');
+                statusEl.textContent = 'Done ✓';
+            } else if (status === 'failed') {
+                card.classList.add('error');
+                statusEl.textContent = 'Failed ✗';
+            }
+
+            // Add to feed (use error style for failed status)
+            const feedClass = status === 'failed' ? 'error' : agentInfo.feedClass;
+            addFeedItem(feedClass, message);
+
+            // Show content preview if writer completed
+            if (agent === 'writer_agent' && status === 'completed' && data?.preview) {
+                addContentCard(platform, data.preview, data.hashtags || []);
+            }
+
+            // Campaign finished (either completed or failed)
+            if (data?.final) {
+                const isFailed = status === 'failed';
+                setGlobalStatus(isFailed ? 'error' : 'done');
+                const btn = document.getElementById('launchBtn');
+                btn.disabled = false;
+                btn.textContent = '🚀 Launch New Campaign';
+            }
+        }
+
+        function addFeedItem(type, message) {
+            const feed = document.getElementById('feed');
+            const empty = document.getElementById('emptyState');
+            if (empty) empty.style.display = 'none';
+
+            const item = document.createElement('div');
+            item.className = `feed-item ${type}`;
+
+            const now = new Date().toLocaleTimeString();
+            item.innerHTML = `
+                <div class="time">${now}</div>
+                <div class="msg">${message}</div>
+            `;
+
+            feed.appendChild(item);
+            feed.scrollTop = feed.scrollHeight;
+        }
+
+        function addContentCard(platform, preview, hashtags) {
+            const container = document.getElementById('contentPreview');
+            container.style.display = 'block';
+
+            const cards = document.getElementById('contentCards');
+            const tagClass = `tag-${platform}`;
+
+            const card = document.createElement('div');
+            card.className = 'content-card';
+            card.id = `content-${platform}`;
+            card.innerHTML = `
+                <span class="platform-tag ${tagClass}">${platform}</span>
+                <div class="text">${preview}...</div>
+                ${hashtags.length ? `<div class="hashtags">${hashtags.map(h => '#' + h).join(' ')}</div>` : ''}
+            `;
+
+            cards.appendChild(card);
+        }
+
+        function setGlobalStatus(state) {
+            const badge = document.getElementById('globalStatus');
+            badge.className = 'status-badge';
+            if (state === 'running') {
+                badge.classList.add('status-running');
+                badge.textContent = '● AGENTS WORKING';
+            } else if (state === 'done') {
+                badge.classList.add('status-done');
+                badge.textContent = '✓ COMPLETE';
+            } else if (state === 'error') {
+                badge.classList.add('status-error');
+                badge.textContent = '✗ FAILED';
+            } else {
+                badge.classList.add('status-idle');
+                badge.textContent = 'IDLE';
+            }
+        }
+
+        function resetUI() {
+            // Reset cards
+            document.querySelectorAll('.agent-card').forEach(card => {
+                card.classList.remove('active', 'done', 'error');
+                card.querySelector('.agent-status').textContent = 'Waiting...';
+            });
+
+            // Reset feed
+            const feed = document.getElementById('feed');
+            feed.innerHTML = '<h2>📡 Live Agent Feed</h2>';
+
+            // Reset content
+            document.getElementById('contentPreview').style.display = 'none';
+            document.getElementById('contentCards').innerHTML = '';
+
+            // Close old WS
+            if (ws) ws.close();
+        }
+    </script>
+</body>
+</html>
